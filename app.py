@@ -754,14 +754,16 @@ def tab_warehouses():
 # ROUTES TAB
 # ──────────────────────────────────────────────────────────
 def tab_routes():
-    all_routes   = db.query(Route).all()
-    all_drivers  = db.query(User).filter(User.role=="driver").all()
-    all_vehicles = db.query(Vehicle).all()
-    wh_opts      = wh_options()
+    all_routes      = db.query(Route).all()
+    active_routes   = [r for r in all_routes if r.status not in ("completed","cancelled")]
+    archived_routes = [r for r in all_routes if r.status in ("completed","cancelled")]
+    all_drivers     = db.query(User).filter(User.role=="driver").all()
+    all_vehicles    = db.query(Vehicle).all()
+    wh_opts         = wh_options()
 
     # Overview map + progress summary
-    if all_routes:
-        route_map(all_routes, height=360, key="overview")
+    if active_routes:
+        route_map(active_routes, height=360, key="overview")
 
         # ── FIX 6: Route progress summary ──
         st.subheader("📊 Route Progress")

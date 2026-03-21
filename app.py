@@ -11,32 +11,367 @@ from database import (get_db, User, Vehicle, Warehouse, Route, Stop,
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
 
-st.set_page_config(page_title="Fleet Command", layout="wide")
+st.set_page_config(page_title="Routr", layout="wide", page_icon="🛰️")
+
 st.markdown("""
 <style>
-    .stApp { background: radial-gradient(circle at 50% 50%, #0f172a, #020617); color: #f8fafc; }
-    .stop-row {
-        background: rgba(255,255,255,0.05); border-radius: 8px;
-        padding: 8px 12px; margin-bottom: 5px;
-        border-left: 4px solid #6C8AFF;
-    }
-    .notif-row {
-        background: rgba(255,200,0,0.07); border-left: 3px solid #f59e0b;
-        border-radius: 8px; padding: 8px 12px; margin-bottom: 5px; font-size: 0.88em;
-    }
-    .login-box {
-        max-width: 380px; margin: 100px auto;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 20px; padding: 40px;
-    }
-    .tag { font-size:0.75em; padding:2px 8px; border-radius:20px;
-           background:rgba(255,255,255,0.1); margin-left:6px; }
-    .progress-bar-bg { background:rgba(255,255,255,0.1); border-radius:6px;
-                       height:8px; margin-top:4px; }
-    .progress-bar-fill { background:#34d399; border-radius:6px; height:8px; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ── Base ── */
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
+:root {
+    --bg:            #0b0b10;
+    --text:          #e4e4f0;
+    --text-dim:      #8888a0;
+    --text-muted:    #44445a;
+    --glass-bg:      rgba(255,255,255,0.035);
+    --glass-border:  rgba(255,255,255,0.07);
+    --glass-hover:   rgba(255,255,255,0.065);
+    --sidebar-bg:    rgba(8,8,13,0.9);
+    --input-bg:      rgba(255,255,255,0.05);
+    --input-border:  rgba(255,255,255,0.1);
+    --divider:       rgba(255,255,255,0.06);
+    --shadow:        rgba(0,0,0,0.5);
+    --scrollbar:     rgba(255,255,255,0.1);
+    /* Neutral accent — white/silver, not purple */
+    --accent:        #c8c8d8;
+    --accent-soft:   rgba(200,200,216,0.08);
+    --accent-border: rgba(200,200,216,0.18);
+    /* Glow for text readability */
+    --text-glow:     0 0 18px rgba(220,220,255,0.25);
+    --dim-glow:      0 0 12px rgba(160,160,200,0.15);
+}
+
+.stApp {
+    background: #0b0b10 !important;
+    color: var(--text) !important;
+    min-height: 100vh;
+}
+
+/* ── Animated lilac orbs (decorative only) ── */
+.stApp::before {
+    content: '';
+    position: fixed; top: -15%; left: -8%;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle,
+        rgba(148,130,230,0.07) 0%,
+        rgba(120,100,210,0.03) 40%,
+        transparent 70%);
+    border-radius: 50%; pointer-events: none;
+    animation: orb1 24s ease-in-out infinite; z-index: 0;
+}
+.stApp::after {
+    content: '';
+    position: fixed; bottom: -20%; right: -8%;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle,
+        rgba(160,120,255,0.05) 0%,
+        rgba(130,100,220,0.02) 40%,
+        transparent 70%);
+    border-radius: 50%; pointer-events: none;
+    animation: orb2 30s ease-in-out infinite; z-index: 0;
+}
+/* Third small orb for depth */
+.stMainBlockContainer::before {
+    content: '';
+    position: fixed; top: 50%; left: 55%;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle,
+        rgba(100,90,180,0.04) 0%,
+        transparent 65%);
+    border-radius: 50%; pointer-events: none;
+    animation: orb3 18s ease-in-out infinite reverse; z-index: 0;
+}
+@keyframes orb1 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    30%      { transform: translate(80px,50px) scale(1.08); }
+    65%      { transform: translate(-30px,80px) scale(0.94); }
+}
+@keyframes orb2 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    35%      { transform: translate(-70px,-40px) scale(1.06); }
+    70%      { transform: translate(50px,-60px) scale(0.92); }
+}
+@keyframes orb3 {
+    0%,100% { transform: translate(0,0) scale(1); }
+    50%      { transform: translate(-60px,40px) scale(1.12); }
+}
+
+/* ── Sidebar ── */
+section[data-testid="stSidebar"] {
+    background: var(--sidebar-bg) !important;
+    backdrop-filter: blur(28px) !important;
+    border-right: 1px solid var(--glass-border) !important;
+}
+section[data-testid="stSidebar"] * {
+    color: var(--text-dim) !important;
+}
+
+/* ── Text glow for readability ── */
+h1 {
+    color: #f0f0ff !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px !important;
+    text-shadow: var(--text-glow) !important;
+    -webkit-text-fill-color: unset !important;
+}
+h2, h3 {
+    color: #d8d8ec !important;
+    font-weight: 600 !important;
+    text-shadow: var(--dim-glow) !important;
+}
+p, li, label, span, div {
+    color: var(--text) !important;
+    text-shadow: var(--dim-glow) !important;
+}
+.stCaption, small {
+    color: var(--text-muted) !important;
+    text-shadow: none !important;
+}
+hr { border-color: var(--divider) !important; }
+
+/* ── Buttons — neutral glass, no purple ── */
+.stButton > button {
+    background: var(--glass-bg) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 10px !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.2s ease !important;
+    backdrop-filter: blur(10px) !important;
+    text-shadow: none !important;
+}
+.stButton > button:hover {
+    background: var(--glass-hover) !important;
+    border-color: var(--accent-border) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 20px var(--shadow) !important;
+}
+.stButton > button[kind="primary"] {
+    background: rgba(255,255,255,0.12) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+}
+.stButton > button[kind="primary"]:hover {
+    background: rgba(255,255,255,0.18) !important;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* ── Inputs ── */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea,
+.stSelectbox > div > div {
+    background: var(--input-bg) !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 10px !important;
+    color: var(--text) !important;
+    text-shadow: var(--dim-glow) !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: rgba(200,200,216,0.4) !important;
+    box-shadow: 0 0 0 3px rgba(200,200,216,0.08), 0 0 12px rgba(200,200,216,0.06) !important;
+}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(16px) !important;
+    border-radius: 14px !important;
+    padding: 4px !important;
+    border: 1px solid var(--glass-border) !important;
+    gap: 2px !important;
+}
+.stTabs [data-baseweb="tab"] {
+    background: transparent !important;
+    border-radius: 10px !important;
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+    font-size: 0.85rem !important;
+    padding: 8px 16px !important;
+    transition: all 0.2s ease !important;
+    text-shadow: none !important;
+}
+.stTabs [aria-selected="true"] {
+    background: rgba(255,255,255,0.08) !important;
+    color: var(--text) !important;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.3) !important;
+    text-shadow: var(--dim-glow) !important;
+}
+
+/* ── Expanders ── */
+.streamlit-expanderHeader {
+    background: var(--glass-bg) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 12px !important;
+    color: var(--text) !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+    backdrop-filter: blur(12px) !important;
+}
+.streamlit-expanderHeader:hover {
+    background: var(--glass-hover) !important;
+    border-color: var(--accent-border) !important;
+}
+.streamlit-expanderContent {
+    background: rgba(255,255,255,0.02) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-top: none !important;
+    border-radius: 0 0 12px 12px !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+/* ── Metrics / dataframes ── */
+[data-testid="stMetric"] {
+    background: var(--glass-bg) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 14px !important;
+    padding: 16px !important;
+    backdrop-filter: blur(12px) !important;
+}
+[data-testid="stDataFrame"] {
+    border-radius: 12px !important; overflow: hidden !important;
+}
+
+/* ── Alerts ── */
+.stAlert {
+    background: var(--glass-bg) !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--glass-border) !important;
+    backdrop-filter: blur(12px) !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-border); }
+
+/* ── Login box — wider, proper padding so text stays inside ── */
+.login-box {
+    max-width: 420px;
+    width: 100%;
+    margin: 60px auto;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px;
+    padding: 48px 44px;
+    box-shadow:
+        0 8px 48px rgba(0,0,0,0.5),
+        0 1px 0 rgba(255,255,255,0.08) inset,
+        0 0 60px rgba(140,120,220,0.06);
+    animation: fadeInUp 0.5s cubic-bezier(0.16,1,0.3,1);
+    position: relative;
+    overflow: visible;
+    box-sizing: border-box;
+}
+.login-box * {
+    position: relative;
+    z-index: 2;
+}
+.login-box h1, .login-box h2, .login-box h3 {
+    color: #f0f0ff !important;
+    text-shadow: 0 0 20px rgba(200,190,255,0.3) !important;
+}
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Glass card ── */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 20px; margin-bottom: 14px;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
+.glass-card:hover {
+    border-color: var(--accent-border);
+    box-shadow: 0 6px 28px var(--shadow);
+    transform: translateY(-1px);
+}
+
+/* ── Stop row ── */
+.stop-row {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 6px;
+    border-left: 4px solid rgba(200,200,220,0.3);
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+.stop-row:hover {
+    background: var(--glass-hover);
+    transform: translateX(2px);
+}
+.stop-row b { text-shadow: var(--dim-glow); }
+
+/* ── Notif row ── */
+.notif-row {
+    background: rgba(245,158,11,0.05);
+    backdrop-filter: blur(12px);
+    border-left: 3px solid rgba(245,158,11,0.45);
+    border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 6px;
+    font-size: 0.875em;
+    transition: background 0.2s ease;
+}
+.notif-row:hover { background: rgba(245,158,11,0.09); }
+
+/* ── Tag ── */
+.tag {
+    font-size: 0.72em; padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    margin-left: 6px; font-weight: 500;
+    color: var(--text-dim);
+    text-shadow: none;
+}
+
+/* ── Progress bar ── */
+.progress-bar-bg {
+    background: var(--glass-border);
+    border-radius: 99px; height: 6px;
+    margin-top: 6px; overflow: hidden;
+}
+.progress-bar-fill {
+    background: linear-gradient(90deg, #34d399, #10b981);
+    border-radius: 99px; height: 6px;
+    transition: width 0.6s ease;
+    box-shadow: 0 0 10px rgba(52,211,153,0.5);
+}
+
+/* ── Stat card ── */
+.stat-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px; padding: 20px; margin-bottom: 14px;
+    transition: all 0.25s ease; animation: fadeInUp 0.4s ease;
+}
+.stat-card:hover {
+    background: var(--glass-hover);
+    border-color: var(--accent-border);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px var(--shadow);
+}
+.stat-card table td { padding: 4px 0; color: var(--text-dim); text-shadow: none; }
+.stat-card table td:last-child { color: var(--text); font-weight: 500; text-shadow: var(--dim-glow); }
 </style>
 """, unsafe_allow_html=True)
+
 
 STOP_STATUSES = {
     "pending":          "🕐 Pending",
@@ -129,21 +464,120 @@ def route_progress(route):
 # LOGIN
 # ──────────────────────────────────────────────────────────
 def show_login():
-    st.markdown('<div class="login-box">', unsafe_allow_html=True)
-    st.title("🛰️ Fleet Command")
-    u = st.text_input("Username")
-    p = st.text_input("Password", type="password")
-    if st.button("Sign In", use_container_width=True, type="primary"):
-        user = db.query(User).filter(User.username == u).first()
-        if user and user.password == hash_password(p):
-            st.session_state.update(user_id=user.id,
-                                    user_role=user.role,
-                                    username=user.username)
-            st.rerun()
-        else:
-            st.error("Wrong username or password.")
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.caption("Default: **admin** / **admin123**")
+    # Inject a full-page centering wrapper and the glass card as a background layer.
+    # Streamlit widgets render inside the center column naturally.
+    st.markdown("""
+    <style>
+        /* Hide default padding so the login fills the viewport nicely */
+        .stMainBlockContainer { padding-top: 0 !important; }
+
+        /* Full-page vertical centering */
+        .login-page-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 90vh;
+            width: 100%;
+        }
+
+        /* The glass card — sits behind the column via negative margin trick */
+        .login-card {
+            position: relative;
+            width: 420px;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 28px;
+            padding: 48px 40px 40px 40px;
+            box-shadow:
+                0 8px 48px rgba(0,0,0,0.5),
+                inset 0 1px 0 rgba(255,255,255,0.08),
+                0 0 80px rgba(140,120,220,0.07);
+            animation: fadeInUp 0.5s cubic-bezier(0.16,1,0.3,1);
+            margin: 0 auto;
+        }
+        .login-card h1 {
+            color: #f0f0ff !important;
+            font-size: 1.8rem !important;
+            font-weight: 700 !important;
+            margin-bottom: 4px !important;
+            text-shadow: 0 0 20px rgba(200,190,255,0.35) !important;
+        }
+        .login-card .subtitle {
+            color: #6666880 !important;
+            font-size: 0.875rem;
+            margin-bottom: 28px;
+            color: #88889a;
+        }
+        /* Make inputs inside card look right */
+        .login-card .stTextInput > div > div > input {
+            background: rgba(255,255,255,0.06) !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+            color: #e8e8f8 !important;
+            font-size: 0.95rem !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Use columns to center the content — blank | content | blank
+    _, col, _ = st.columns([1, 1.2, 1])
+    with col:
+        st.markdown("""
+            <div style="text-align:center; padding: 80px 0 20px 0;">
+                <div style="font-size:2.4rem; margin-bottom:8px;">🛰️</div>
+                <h1 style="color:#f0f0ff; font-size:2rem; font-weight:700;
+                           text-shadow: 0 0 24px rgba(200,190,255,0.4);
+                           margin:0 0 4px 0;">Routr</h1>
+                <p style="color:#66667a; font-size:0.875rem; margin:0 0 32px 0;">
+                    Fleet management & route optimization
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Glass card wrapper — uses st.container with custom CSS
+        with st.container():
+            st.markdown("""
+                <div style="
+                    background: rgba(255,255,255,0.05);
+                    backdrop-filter: blur(40px);
+                    -webkit-backdrop-filter: blur(40px);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 24px;
+                    padding: 36px 32px 28px 32px;
+                    box-shadow: 0 8px 48px rgba(0,0,0,0.5),
+                                inset 0 1px 0 rgba(255,255,255,0.08),
+                                0 0 80px rgba(140,120,220,0.08);
+                    margin-bottom: 12px;
+                ">
+                <p style="color:#8888a0; font-size:0.8rem; margin:0 0 20px 0;
+                          letter-spacing:0.08em; text-transform:uppercase;">
+                    Sign in to continue
+                </p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            u = st.text_input("Username", placeholder="Enter username")
+            p = st.text_input("Password", type="password", placeholder="Enter password")
+
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+            if st.button("Sign In →", use_container_width=True, type="primary"):
+                user = db.query(User).filter(User.username == u).first()
+                if user and user.password == hash_password(p):
+                    st.session_state.update(user_id=user.id,
+                                            user_role=user.role,
+                                            username=user.username)
+                    st.rerun()
+                else:
+                    st.error("Wrong username or password.")
+
+            st.markdown("""
+                <p style="text-align:center; color:#44445a;
+                          font-size:0.78rem; margin-top:16px;">
+                    Default: admin / admin123
+                </p>
+            """, unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────────────────
@@ -331,8 +765,8 @@ def tab_routes():
 
         # ── FIX 6: Route progress summary ──
         st.subheader("📊 Route Progress")
-        cols = st.columns(min(len(all_routes), 4))
-        for i, route in enumerate(all_routes):
+        cols = st.columns(min(len(active_routes), 4))
+        for i, route in enumerate(active_routes):
             delivered, total = route_progress(route)
             pct = int((delivered / total * 100) if total else 0)
             with cols[i % 4]:
@@ -394,11 +828,14 @@ def tab_routes():
 
     st.divider()
 
-    if not all_routes:
+    if not active_routes and not archived_routes:
         st.info("No routes yet.")
         return
 
-    for route in all_routes:
+    if not active_routes:
+        st.info("No active routes — all routes are completed or cancelled.")
+
+    for route in active_routes:
         color = rcolor(route.id)
         delivered, total = route_progress(route)
         pct = int((delivered / total * 100) if total else 0)
@@ -493,6 +930,29 @@ def tab_routes():
             if route.stops:
                 route_map([route], height=300, key=f"rmap_{route.id}")
 
+    # ── Archive ──
+    if archived_routes:
+        st.divider()
+        with st.expander(f"🗄️ Archive — {len(archived_routes)} completed / cancelled route(s)"):
+            for route in archived_routes:
+                color = rcolor(route.id)
+                delivered, total = route_progress(route)
+                pct = int(delivered / total * 100) if total else 0
+                st.markdown(
+                    f"<div style='background:var(--glass-bg);border:1px solid var(--glass-border);"
+                    f"border-radius:12px;padding:14px 16px;margin-bottom:8px;"
+                    f"border-left:4px solid {color};opacity:0.7'>"
+                    f"<b>{ROUTE_STATUSES.get(route.status,'')}  {route.name}</b>"
+                    f"  <span class='tag'>{delivered}/{total} delivered ({pct}%)</span>"
+                    + (f"  <span class='tag'>👤 {route.driver.username}</span>" if route.driver else "")
+                    + (f"  <span class='tag'>🏭 {route.warehouse.name}</span>" if route.warehouse else "")
+                    + "</div>", unsafe_allow_html=True)
+                c1, c2 = st.columns([1, 6])
+                if c1.button("🗑️ Delete", key=f"arc_del_{route.id}", use_container_width=True):
+                    db.delete(route); db.commit(); st.rerun()
+                if c2.button("↩️ Restore to active", key=f"arc_restore_{route.id}", use_container_width=True):
+                    route.status = "active"; db.commit(); st.rerun()
+
 
 # ──────────────────────────────────────────────────────────
 # STOP POOL TAB
@@ -569,7 +1029,8 @@ def tab_pool():
 
     st.divider()
     st.write(f"**{len(unassigned)} stop(s) in pool**")
-    all_routes = db.query(Route).all()
+    all_routes = db.query(Route).filter(
+        Route.status.notin_(["completed", "cancelled"])).all()
     r_opts = {"— Keep unassigned —": None, **{r.name: r.id for r in all_routes}}
 
     for s in unassigned:
@@ -690,8 +1151,7 @@ def tab_driver_stats():
             rate  = s["delivery_rate"]
             color = "#34d399" if rate >= 80 else "#fbbf24" if rate >= 50 else "#f87171"
             st.markdown(
-                f"<div style='background:rgba(255,255,255,0.06);border-radius:14px;"
-                f"padding:16px;margin-bottom:12px;border-left:4px solid {color}'>"
+                f"<div class='stat-card' style='border-left:4px solid {color}'>"
                 f"<h4 style='margin:0 0 8px 0'>👤 {driver.username}</h4>"
                 f"<div style='font-size:2em;font-weight:bold;color:{color}'>{rate}%</div>"
                 f"<div style='font-size:0.8em;color:#94a3b8;margin-bottom:10px'>delivery rate</div>"
@@ -730,7 +1190,7 @@ def tab_driver_stats():
 # ──────────────────────────────────────────────────────────
 def show_admin():
     with st.sidebar:
-        st.title("🛰️ Fleet Command")
+        st.title("🛰️ Routr")
         st.caption(f"**{st.session_state.username}** · Admin")
         unread = db.query(Notification).filter(Notification.is_read==False).count()
         if unread: st.warning(f"🔔 {unread} unread")
@@ -738,7 +1198,7 @@ def show_admin():
             for k in ["user_id","user_role","username"]: st.session_state[k]=None
             st.rerun()
 
-    st.title("Fleet Command")
+    st.title("Routr")
     t_routes, t_pool, t_wh, t_vehicles, t_drivers, t_stats, t_notifs = st.tabs([
         "🗺️ Routes", "📥 Stop Pool", "🏭 Warehouses",
         "🚛 Vehicles", "👤 Drivers", "📊 Driver Stats", "🔔 Notifications"
@@ -838,7 +1298,7 @@ def show_driver():
     ).all()
 
     with st.sidebar:
-        st.title("🚛 Driver Panel")
+        st.title("🚛 Routr")
         st.caption(f"**{st.session_state.username}**")
         if my_routes:
             st.session_state.setdefault("drv_route", my_routes[0].name)
@@ -936,7 +1396,13 @@ def show_driver():
 
     st.subheader("Stops")
     color = rcolor(route.id)
-    for i, s in enumerate(stops):
+    pending_stops   = [s for s in stops if s.status not in ("delivered", "cancelled")]
+    completed_stops = [s for s in stops if s.status in ("delivered", "cancelled")]
+
+    if not pending_stops and completed_stops:
+        st.success("All stops completed! 🎉")
+
+    for i, s in enumerate(pending_stops):
         sc = STOP_COLORS.get(s.status, color)
         st.markdown(
             f"<div class='stop-row' style='border-left-color:{sc}'>"
@@ -945,6 +1411,17 @@ def show_driver():
             + (f"<span class='tag'>👤 {s.recipient_name}</span>" if s.recipient_name else "")
             + "</div>", unsafe_allow_html=True)
         stop_detail(s, ctx=f"driver_{route.id}")
+
+    if completed_stops:
+        with st.expander(f"✅ Completed stops ({len(completed_stops)})"):
+            for s in completed_stops:
+                sc = STOP_COLORS.get(s.status, color)
+                st.markdown(
+                    f"<div class='stop-row' style='border-left-color:{sc};opacity:0.5'>"
+                    f"<b>{s.name}</b>"
+                    f"<span class='tag'>{STOP_STATUSES.get(s.status,'')}</span>"
+                    + (f"<span class='tag'>👤 {s.recipient_name}</span>" if s.recipient_name else "")
+                    + "</div>", unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────────────────

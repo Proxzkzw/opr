@@ -1,0 +1,11 @@
+streamlit
+folium
+streamlit-folium
+streamlit-searchbox
+geopy
+fastapi
+uvicorn
+ortools==9.7.2996
+sqlalchemy
+requests
+psycopg2-binary

@@ -186,14 +186,17 @@ async def health():
 
 @app.post("/api/optimize")
 async def optimize(data: RouteRequest):
-    if len(data.stops) < 2:
-        return {"optimized_indices": list(range(len(data.stops)))}
+    n = len(data.stops)
+    if n < 2:
+        return {"optimized_indices": list(range(n))}
     try:
         result = _tsp_order(data.stops, data.warehouse)
         return {"optimized_indices": result}
     except Exception as e:
         log.error(f"/api/optimize error: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Fallback — return unoptimized order rather than 500
+        log.warning("Falling back to unoptimized order")
+        return {"optimized_indices": list(range(n))}
 
 
 @app.post("/api/split")
@@ -204,15 +207,26 @@ async def split(data: SplitRequest):
         raise HTTPException(400, "num_routes must be >= 1")
     try:
         clusters = _cluster(data.stops, k)
-        result   = []
-        for cluster_indices in clusters:
-            cluster_stops = [data.stops[i] for i in cluster_indices]
-            order = _tsp_order(cluster_stops, data.warehouse, time_limit_seconds=5)
-            result.append({
-                "stop_indices":    cluster_indices,
-                "optimized_order": order,
-            })
-        return {"routes": result}
     except Exception as e:
-        log.error(f"/api/split error: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        log.error(f"/api/split clustering error: {traceback.format_exc()}")
+        # Fallback — split evenly without clustering
+        clusters = []
+        size = max(1, n // k)
+        all_indices = list(range(n))
+        for i in range(0, n, size):
+            clusters.append(all_indices[i:i+size])
+
+    result = []
+    for cluster_indices in clusters:
+        cluster_stops = [data.stops[i] for i in cluster_indices]
+        try:
+            order = _tsp_order(cluster_stops, data.warehouse, time_limit_seconds=5)
+        except Exception as e:
+            log.error(f"/api/split tsp error on cluster: {traceback.format_exc()}")
+            # Fallback — unoptimized order for this cluster
+            order = list(range(len(cluster_stops)))
+        result.append({
+            "stop_indices":    cluster_indices,
+            "optimized_order": order,
+        })
+    return {"routes": result}

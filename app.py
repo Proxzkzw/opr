@@ -437,17 +437,17 @@ def confirm_button(label, key, confirm_label="⚠️ Confirm?"):
     """Two-click confirmation. Returns True only on the second click."""
     armed_key = f"_armed_{key}"
     if not st.session_state.get(armed_key):
-        if st.button(label, key=key, use_container_width=True):
+        if st.button(label, key=key, width='stretch'):
             st.session_state[armed_key] = True
             st.rerun()
         return False
     else:
         st.warning(confirm_label)
         c1, c2 = st.columns(2)
-        if c1.button("Yes, delete", key=f"{key}_yes", use_container_width=True):
+        if c1.button("Yes, delete", key=f"{key}_yes", width='stretch'):
             st.session_state[armed_key] = False
             return True
-        if c2.button("Cancel", key=f"{key}_no", use_container_width=True):
+        if c2.button("Cancel", key=f"{key}_no", width='stretch'):
             st.session_state[armed_key] = False
             st.rerun()
         return False
@@ -562,7 +562,7 @@ def show_login():
 
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-            if st.button("Sign In →", use_container_width=True, type="primary"):
+            if st.button("Sign In →", width='stretch', type="primary"):
                 user = db.query(User).filter(User.username == u).first()
                 if user and user.password == hash_password(p):
                     st.session_state.update(user_id=user.id,
@@ -669,7 +669,7 @@ def route_map(routes, height=460, key="map"):
                   [[s.lat, s.lon] for s in stops]
             folium.PolyLine(pts, color=color, weight=3, opacity=0.8).add_to(m)
 
-    return st_folium(m, height=height, use_container_width=True, key=key)
+    return st_folium(m, height=height, width='stretch', key=key)
 
 
 # ──────────────────────────────────────────────────────────
@@ -689,12 +689,12 @@ def tab_warehouses():
         if st.session_state.get(f"_armed_delwh_{wh.id}"):
             st.warning(f"Delete **{wh.name}**? Routes using it will lose their warehouse.")
             y, n = st.columns(2)
-            if y.button("Yes, delete", key=f"delwh_yes_{wh.id}", use_container_width=True):
+            if y.button("Yes, delete", key=f"delwh_yes_{wh.id}", width='stretch'):
                 for r in wh.routes: r.warehouse_id = None
                 db.delete(wh); db.commit()
                 st.session_state.pop(f"_armed_delwh_{wh.id}", None)
                 st.rerun()
-            if n.button("Cancel", key=f"delwh_no_{wh.id}", use_container_width=True):
+            if n.button("Cancel", key=f"delwh_no_{wh.id}", width='stretch'):
                 st.session_state.pop(f"_armed_delwh_{wh.id}", None)
                 st.rerun()
 
@@ -728,7 +728,7 @@ def tab_warehouses():
                       icon=folium.Icon(color="blue", icon="map-marker")).add_to(wm)
 
     st.caption("Click map to pin, or use search above.")
-    md = st_folium(wm, height=360, use_container_width=True, key="wh_add_map")
+    md = st_folium(wm, height=360, width='stretch', key="wh_add_map")
     if md and md.get("last_clicked"):
         lc = md["last_clicked"]
         st.session_state["wh_lat"] = lc["lat"]
@@ -740,7 +740,7 @@ def tab_warehouses():
 
     if plat: st.info(f"📍 {round(plat,5)}, {round(plon,5)}")
 
-    if st.button("💾 Save Warehouse", type="primary", use_container_width=True):
+    if st.button("💾 Save Warehouse", type="primary", width='stretch'):
         if not w_name: st.error("Enter a name.")
         elif not plat:  st.error("Pin a location first.")
         else:
@@ -792,7 +792,7 @@ def tab_routes():
         v_opts = {"— None —": None, **{v.name: v.id for v in all_vehicles}}
         rd = st.selectbox("Driver",  list(d_opts.keys()), key="nr_d")
         rv = st.selectbox("Vehicle", list(v_opts.keys()), key="nr_v")
-        if st.button("Create Route", use_container_width=True, type="primary"):
+        if st.button("Create Route", width='stretch', type="primary"):
             if rname:
                 db.add(Route(name=rname, warehouse_id=wh_opts.get(wh_sel),
                              driver_id=d_opts.get(rd), vehicle_id=v_opts.get(rv)))
@@ -806,7 +806,7 @@ def tab_routes():
         n_routes = st.number_input("Routes to create", 1, 20, 2, key="split_n")
         prefix   = st.text_input("Name prefix", "Route", key="split_pfx")
         wh_split = st.selectbox("Warehouse", list(wh_opts.keys()), key="split_wh")
-        if st.button("⚡ Split & Optimize", use_container_width=True, type="primary"):
+        if st.button("⚡ Split & Optimize", width='stretch', type="primary"):
             if len(unassigned) < 2:
                 st.warning("Need at least 2 stops in the pool.")
             else:
@@ -872,7 +872,7 @@ def tab_routes():
                                     key=f"rstat_{route.id}")
 
             bc1, bc2, bc3 = st.columns(3)
-            if bc1.button("💾 Save", key=f"rsave_{route.id}", use_container_width=True):
+            if bc1.button("💾 Save", key=f"rsave_{route.id}", width='stretch'):
                 d_map = {d.username: d.id for d in all_drivers}
                 v_map = {v.name: v.id for v in all_vehicles}
                 route.name=new_name; route.status=new_stat
@@ -884,7 +884,7 @@ def tab_routes():
             stored_count   = len(route.order.split(",")) if route.order else 0
             needs_optimize = not route.order or stored_count != len(route.stops)
             if needs_optimize:
-                if bc2.button("🚀 Optimize", key=f"ropt_{route.id}", use_container_width=True):
+                if bc2.button("🚀 Optimize", key=f"ropt_{route.id}", width='stretch'):
                     stops = list(route.stops)
                     if len(stops) > 1:
                         payload = {"stops": [{"lat":s.lat,"lon":s.lon} for s in stops]}
@@ -950,9 +950,9 @@ def tab_routes():
                     + (f"  <span class='tag'>🏭 {route.warehouse.name}</span>" if route.warehouse else "")
                     + "</div>", unsafe_allow_html=True)
                 c1, c2 = st.columns([1, 6])
-                if c1.button("🗑️ Delete", key=f"arc_del_{route.id}", use_container_width=True):
+                if c1.button("🗑️ Delete", key=f"arc_del_{route.id}", width='stretch'):
                     db.delete(route); db.commit(); st.rerun()
-                if c2.button("↩️ Restore to active", key=f"arc_restore_{route.id}", use_container_width=True):
+                if c2.button("↩️ Restore to active", key=f"arc_restore_{route.id}", width='stretch'):
                     route.status = "active"; db.commit(); st.rerun()
 
 
@@ -991,7 +991,7 @@ def tab_pool():
                           icon=folium.Icon(color="blue", icon="map-marker")).add_to(pm)
 
         st.caption("🖱️ Click map to pin, or search above.")
-        pmd = st_folium(pm, height=280, use_container_width=True, key="pool_map")
+        pmd = st_folium(pm, height=280, width='stretch', key="pool_map")
         if pmd and pmd.get("last_clicked"):
             c = pmd["last_clicked"]
             st.session_state["pool_pending_lat"] = c["lat"]
@@ -1011,7 +1011,7 @@ def tab_pool():
         rnote  = fc4.text_input("Delivery Note",   key="pool_rnote",
                                 placeholder="Leave at gate")
 
-        if st.button("➕ Add to Pool", type="primary", use_container_width=True):
+        if st.button("➕ Add to Pool", type="primary", width='stretch'):
             if not plat:
                 st.error("Pin a location first — search or click the map.")
             else:
@@ -1049,14 +1049,14 @@ def tab_pool():
             new_rnote  = ec4.text_input("Delivery Note",   value=s.recipient_note  or "", key=f"prnote_{s.id}")
 
             sc1, sc2, sc3 = st.columns(3)
-            if sc1.button("💾 Save", key=f"psave_{s.id}", use_container_width=True):
+            if sc1.button("💾 Save", key=f"psave_{s.id}", width='stretch'):
                 s.name=new_name; s.recipient_name=new_rname
                 s.recipient_phone=new_rphone; s.recipient_note=new_rnote
                 db.commit(); st.success("Saved.")
 
             new_r = sc2.selectbox("Assign to route", list(r_opts.keys()),
                                   index=0, key=f"passign_{s.id}")
-            if sc2.button("Move →", key=f"pmove_{s.id}", use_container_width=True):
+            if sc2.button("Move →", key=f"pmove_{s.id}", width='stretch'):
                 s.route_id = r_opts.get(new_r); db.commit(); st.rerun()
 
             if confirm_button("🗑️ Delete", key=f"pdel_{s.id}"):
@@ -1140,7 +1140,7 @@ def tab_driver_stats():
 
     import pandas as pd
     df = pd.DataFrame(rows)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, width='stretch', hide_index=True)
 
     st.divider()
 
@@ -1196,7 +1196,7 @@ def show_admin():
         st.caption(f"**{st.session_state.username}** · Admin")
         unread = db.query(Notification).filter(Notification.is_read==False).count()
         if unread: st.warning(f"🔔 {unread} unread")
-        if st.button("Logout", use_container_width=True):
+        if st.button("Logout", width='stretch'):
             for k in ["user_id","user_role","username"]: st.session_state[k]=None
             st.rerun()
 
@@ -1244,7 +1244,7 @@ def show_admin():
             dc, db_col, da = st.columns([3, 2, 1])
             dc.write(f"👤 **{drv.username}**")
             # ── FIX 5: change password ──
-            if db_col.button("🔑 Reset pwd", key=f"rpwd_{drv.id}", use_container_width=True):
+            if db_col.button("🔑 Reset pwd", key=f"rpwd_{drv.id}", width='stretch'):
                 st.session_state[f"reset_pwd_{drv.id}"] = True
             if st.session_state.get(f"reset_pwd_{drv.id}"):
                 new_pwd = st.text_input(f"New password for {drv.username}",
@@ -1315,7 +1315,7 @@ def show_driver():
                     r.driver_id = user.id; db.commit()
                     notify(f"🔄 '{user.username}' took '{r.name}'.", tag="route_event")
                     st.rerun()
-        if st.button("Logout", use_container_width=True):
+        if st.button("Logout", width='stretch'):
             for k in ["user_id","user_role","username"]: st.session_state[k]=None
             st.rerun()
 
@@ -1344,17 +1344,17 @@ def show_driver():
 
     st.divider()
     a1, a2, a3, a4 = st.columns(4)
-    if a1.button("▶️ Start",    use_container_width=True):
+    if a1.button("▶️ Start",    width='stretch'):
         route.status="in_progress"; db.commit()
         notify(f"▶️ '{user.username}' started '{route.name}'.", tag="route_event")
         st.rerun()
-    if a2.button("✅ Complete", use_container_width=True):
+    if a2.button("✅ Complete", width='stretch'):
         route.status="completed"; db.commit()
         notify(f"✅ '{user.username}' completed '{route.name}'.", tag="route_event")
         st.rerun()
-    if a3.button("⚠️ Issue",   use_container_width=True):
+    if a3.button("⚠️ Issue",   width='stretch'):
         st.session_state[f"show_issue_{route.id}"] = True
-    if a4.button("💬 Message", use_container_width=True):
+    if a4.button("💬 Message", width='stretch'):
         st.session_state[f"show_msg_{route.id}"]   = True
 
     if st.session_state.get(f"show_issue_{route.id}"):

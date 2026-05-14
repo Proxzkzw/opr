@@ -400,9 +400,9 @@ def get_db_session():
     return get_db()
 
 # Use a cached-per-session db handle via session_state
-if "_db" not in st.session_state:
-    st.session_state["_db"] = get_db()
-db = st.session_state["_db"]
+# if "_db" not in st.session_state:
+#     st.session_state["_db"] = get_db()
+# db = st.session_state["_db"]
 
 
 # ──────────────────────────────────────────────────────────

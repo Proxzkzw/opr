@@ -626,8 +626,7 @@ def route_map(routes, height=460, key="map"):
         )
 
     m = folium.Map(location=st.session_state[sc_key],
-                   zoom_start=12,
-                   tiles="CartoDB dark_matter")
+                   zoom_start=12)
 
     seen_wh = set()
     for r in routes:
@@ -697,8 +696,7 @@ def tab_warehouses():
         )
 
     wm = folium.Map(location=st.session_state[sc_key],
-                    zoom_start=13 if plat else 5,
-                    tiles="CartoDB dark_matter")
+                    zoom_start=13 if plat else 5)
     for wh in warehouses:
         folium.Marker([wh.lat, wh.lon], tooltip=wh.name,
                       icon=folium.Icon(color="orange", icon="home")).add_to(wm)
@@ -955,8 +953,7 @@ def tab_pool():
             )
 
         pm = folium.Map(location=st.session_state[sc_key],
-                        zoom_start=12,
-                        tiles="CartoDB dark_matter")
+                        zoom_start=12)
         for s in unassigned:
             folium.CircleMarker([s.lat,s.lon], radius=6, color="#6C8AFF",
                                 fill=True, tooltip=s.name).add_to(pm)

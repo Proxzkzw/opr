@@ -395,14 +395,11 @@ for k in ["user_id","user_role","username"]:
     if k not in st.session_state: st.session_state[k] = None
 
 
-# ── FIX 10: db per-render, not module-level singleton ────
+# ── Per-render db session ────
 def get_db_session():
     return get_db()
 
-# Use a cached-per-session db handle via session_state
-# if "_db" not in st.session_state:
-#     st.session_state["_db"] = get_db()
-# db = st.session_state["_db"]
+db = get_db_session()
 
 
 # ──────────────────────────────────────────────────────────
@@ -432,7 +429,6 @@ def get_ordered_stops(route):
 def wh_options():
     return {"— None —": None, **{w.name: w.id for w in db.query(Warehouse).all()}}
 
-# ── FIX 9: Confirmation helper ───────────────────────────
 def confirm_button(label, key, confirm_label="⚠️ Confirm?"):
     """Two-click confirmation. Returns True only on the second click."""
     armed_key = f"_armed_{key}"
@@ -452,7 +448,6 @@ def confirm_button(label, key, confirm_label="⚠️ Confirm?"):
             st.rerun()
         return False
 
-# ── Route progress summary ────────────────────────────────
 def route_progress(route):
     """Returns (delivered, total) counts for a route."""
     stops = list(route.stops)
@@ -464,14 +459,9 @@ def route_progress(route):
 # LOGIN
 # ──────────────────────────────────────────────────────────
 def show_login():
-    # Inject a full-page centering wrapper and the glass card as a background layer.
-    # Streamlit widgets render inside the center column naturally.
     st.markdown("""
     <style>
-        /* Hide default padding so the login fills the viewport nicely */
         .stMainBlockContainer { padding-top: 0 !important; }
-
-        /* Full-page vertical centering */
         .login-page-wrap {
             display: flex;
             align-items: center;
@@ -479,8 +469,6 @@ def show_login():
             min-height: 90vh;
             width: 100%;
         }
-
-        /* The glass card — sits behind the column via negative margin trick */
         .login-card {
             position: relative;
             width: 420px;
@@ -505,12 +493,10 @@ def show_login():
             text-shadow: 0 0 20px rgba(200,190,255,0.35) !important;
         }
         .login-card .subtitle {
-            color: #6666880 !important;
+            color: #88889a !important;
             font-size: 0.875rem;
             margin-bottom: 28px;
-            color: #88889a;
         }
-        /* Make inputs inside card look right */
         .login-card .stTextInput > div > div > input {
             background: rgba(255,255,255,0.06) !important;
             border: 1px solid rgba(255,255,255,0.12) !important;
@@ -520,7 +506,6 @@ def show_login():
     </style>
     """, unsafe_allow_html=True)
 
-    # Use columns to center the content — blank | content | blank
     _, col, _ = st.columns([1, 1.2, 1])
     with col:
         st.markdown("""
@@ -535,7 +520,6 @@ def show_login():
             </div>
         """, unsafe_allow_html=True)
 
-        # Glass card wrapper — uses st.container with custom CSS
         with st.container():
             st.markdown("""
                 <div style="
@@ -589,7 +573,6 @@ def stop_detail(stop, ctx=""):
     label = STOP_STATUSES.get(stop.status, stop.status)
     with st.expander(f"📦 {stop.name}  ·  {label}"):
 
-        # ── FIX 7: Show recipient info read-only first so driver sees it clearly ──
         if stop.recipient_name or stop.recipient_phone or stop.recipient_note:
             st.markdown(
                 f"**👤 {stop.recipient_name or '—'}**"
@@ -598,7 +581,6 @@ def stop_detail(stop, ctx=""):
             )
             st.divider()
 
-        # Editable recipient fields
         c1, c2 = st.columns(2)
         rname  = c1.text_input("Recipient",  value=stop.recipient_name  or "", key=f"rn_{k}")
         rphone = c2.text_input("Phone",      value=stop.recipient_phone or "", key=f"rp_{k}")
@@ -636,8 +618,6 @@ def route_map(routes, height=460, key="map"):
     all_stops = [s for r in routes for s in r.stops]
     whs       = [r.warehouse for r in routes if r.warehouse]
 
-    # Set initial center once — never update it again so the map
-    # never jumps when Streamlit reruns.
     sc_key = f"_mapcenter_{key}"
     if sc_key not in st.session_state:
         st.session_state[sc_key] = (
@@ -682,7 +662,6 @@ def tab_warehouses():
         c1, c2, c3 = st.columns([4, 3, 1])
         c1.markdown(f"**🏭 {wh.name}**")
         c2.caption(f"{round(wh.lat,5)}, {round(wh.lon,5)}")
-        # ── FIX 9: confirmation on delete ──
         if c3.button("🗑️", key=f"delwh_{wh.id}"):
             st.session_state[f"_armed_delwh_{wh.id}"] = True
             st.rerun()
@@ -733,7 +712,6 @@ def tab_warehouses():
         lc = md["last_clicked"]
         st.session_state["wh_lat"] = lc["lat"]
         st.session_state["wh_lon"] = lc["lng"]
-        # Don't rerun — show a "Use this location" button instead
     if plat:
         if st.button("📍 Use pinned location", key="wh_use_pin"):
             st.rerun()
@@ -761,11 +739,9 @@ def tab_routes():
     all_vehicles    = db.query(Vehicle).all()
     wh_opts         = wh_options()
 
-    # Overview map + progress summary
     if active_routes:
         route_map(active_routes, height=360, key="overview")
 
-        # ── FIX 6: Route progress summary ──
         st.subheader("📊 Route Progress")
         cols = st.columns(min(len(active_routes), 4))
         for i, route in enumerate(active_routes):
@@ -900,10 +876,8 @@ def tab_routes():
                                 db.commit(); st.success("Optimized!"); st.rerun()
                         except: st.error("Engine offline.")
             else:
-                # ── FIX 4: was bc2.success() which doesn't exist ──
                 bc2.markdown("✅ Optimized")
 
-            # ── FIX 9: confirmation on route delete ──
             if confirm_button("🗑️ Delete Route", key=f"rdel_{route.id}"):
                 db.delete(route); db.commit(); st.rerun()
 
@@ -996,7 +970,6 @@ def tab_pool():
             c = pmd["last_clicked"]
             st.session_state["pool_pending_lat"] = c["lat"]
             st.session_state["pool_pending_lon"] = c["lng"]
-            # Don't rerun — button below will confirm
 
         if plat: st.info(f"📍 Pinned: {round(plat,5)}, {round(plon,5)}")
 
@@ -1042,7 +1015,7 @@ def tab_pool():
             + (f"  ·  📞 {s.recipient_phone}" if s.recipient_phone else "")
         ):
             ec1, ec2 = st.columns(2)
-            new_name   = ec1.text_input("Stop Label",      value=s.name,             key=f"pn_{s.id}")
+            new_name   = ec1.text_input("Stop Label",      value=s.name,              key=f"pn_{s.id}")
             new_rname  = ec2.text_input("Recipient Name",  value=s.recipient_name  or "", key=f"prn_{s.id}")
             ec3, ec4   = st.columns(2)
             new_rphone = ec3.text_input("Recipient Phone", value=s.recipient_phone or "", key=f"prp_{s.id}")
@@ -1118,7 +1091,6 @@ def tab_driver_stats():
         st.info("No drivers yet. Create them in the Drivers tab.")
         return
 
-    # Summary table across all drivers
     st.subheader("📊 All Drivers Overview")
     rows = []
     for d in drivers:
@@ -1144,7 +1116,6 @@ def tab_driver_stats():
 
     st.divider()
 
-    # Per-driver detail cards
     st.subheader("👤 Per-Driver Breakdown")
     cols = st.columns(min(len(drivers), 3))
     for i, driver in enumerate(drivers):
@@ -1174,7 +1145,6 @@ def tab_driver_stats():
                 unsafe_allow_html=True
             )
 
-            # Recent route history for this driver
             routes = db.query(Route).filter(Route.driver_id == driver.id).all()
             if routes:
                 with st.expander(f"Route history ({len(routes)})"):
@@ -1221,7 +1191,6 @@ def show_admin():
         for v in db.query(Vehicle).all():
             vc, va = st.columns([4,1])
             vc.write(f"🚛 **{v.name}**")
-            # ── FIX 3: unlink routes before delete ──
             if va.button("🗑️", key=f"vdel_{v.id}"):
                 for r in db.query(Route).filter(Route.vehicle_id==v.id).all():
                     r.vehicle_id = None
@@ -1243,7 +1212,6 @@ def show_admin():
         for drv in db.query(User).filter(User.role=="driver").all():
             dc, db_col, da = st.columns([3, 2, 1])
             dc.write(f"👤 **{drv.username}**")
-            # ── FIX 5: change password ──
             if db_col.button("🔑 Reset pwd", key=f"rpwd_{drv.id}", width='stretch'):
                 st.session_state[f"reset_pwd_{drv.id}"] = True
             if st.session_state.get(f"reset_pwd_{drv.id}"):
@@ -1273,7 +1241,6 @@ def show_admin():
                 if mc1.button("✅ Mark all read", key=f"mark_{filt}"):
                     for n in lst: n.is_read = True
                     db.commit(); st.rerun()
-                # ── FIX 8: allow clearing old notifications ──
                 if mc2.button("🗑️ Clear read", key=f"clear_{filt}"):
                     for n in lst:
                         if n.is_read: db.delete(n)
@@ -1292,7 +1259,6 @@ def show_admin():
 def show_driver():
     user = db.query(User).filter(User.id==st.session_state.user_id).first()
 
-    # ── FIX 2: only show truly available routes (active + unassigned) ──
     my_routes = db.query(Route).filter(Route.driver_id==user.id).all()
     available = db.query(Route).filter(
         Route.status=="active",
@@ -1336,7 +1302,6 @@ def show_driver():
         + (f"  ·  🏭 {wh.name}" if wh else "")
         + f"  ·  {delivered}/{total} delivered"
     )
-    # Progress bar
     st.markdown(
         f"<div class='progress-bar-bg'>"
         f"<div class='progress-bar-fill' style='width:{pct}%'></div></div>",
@@ -1377,12 +1342,10 @@ def show_driver():
     st.divider()
     route_map([route], height=420, key=f"dmap_{route.id}")
 
-    # ── FIX 1: correct Google Maps waypoints ──
     stops = get_ordered_stops(route)
     if stops:
         origin = f"{wh.lat},{wh.lon}" if wh else f"{stops[0].lat},{stops[0].lon}"
         dest   = f"{stops[-1].lat},{stops[-1].lon}"
-        # waypoints = middle stops only (not origin or destination)
         mid    = stops[1:-1] if not wh else stops[:-1]
         wpts   = "|".join(f"{s.lat},{s.lon}" for s in mid)
         gurl   = (f"https://www.google.com/maps/dir/?api=1&origin={origin}"
@@ -1435,3 +1398,5 @@ elif st.session_state.user_role == "admin":
     show_admin()
 else:
     show_driver()
+
+db.close()
